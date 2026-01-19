@@ -1,0 +1,241 @@
+{
+  "name": "Générateur Dou'a - Police KFGQPC Uthman Taha",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "name": "Déclencheur Quotidien",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "duaa_text",
+              "value": "بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ"
+            },
+            {
+              "name": "output_name",
+              "value": "bismillah_{{ $now.format('yyyy-MM-dd') }}"
+            },
+            {
+              "name": "format",
+              "value": "instagram_square"
+            },
+            {
+              "name": "footer_text",
+              "value": "@votre_compte"
+            }
+          ]
+        }
+      },
+      "name": "Configuration Dou'a",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [450, 300],
+      "notes": "Modifiez ici le texte et les paramètres"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://votre-app.railway.app/api/generate",
+        "authentication": "none",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"duaa_text\": \"{{ $json.duaa_text }}\",\n  \"output_name\": \"{{ $json.output_name }}\",\n  \"config\": {\n    \"font_name\": \"KFGQPC-Uthman-Taha.ttf\",\n    \"font_size\": 90,\n    \"format\": \"{{ $json.format }}\",\n    \"text_color\": \"#FFFFFF\",\n    \"background_color\": \"#1a472a\",\n    \"text_shadow\": true,\n    \"shadow_color\": \"#000000\",\n    \"shadow_offset\": [3, 3],\n    \"add_footer\": true,\n    \"footer_text\": \"{{ $json.footer_text }}\",\n    \"footer_font_size\": 30,\n    \"line_spacing\": 1.5\n  }\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "name": "Générer Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [650, 300],
+      "notes": "Appel API avec police KFGQPC"
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "seconds"
+      },
+      "name": "Attendre 5s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://votre-app.railway.app/api/status/{{ $json.job_id }}",
+        "options": {}
+      },
+      "name": "Vérifier Statut",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.status }}",
+              "operation": "equals",
+              "value2": "completed"
+            }
+          ]
+        }
+      },
+      "name": "Si Terminé",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://votre-app.railway.app{{ $json.download_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "name": "Télécharger Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1450, 200]
+    },
+    {
+      "parameters": {
+        "amount": 10,
+        "unit": "seconds"
+      },
+      "name": "Réessayer dans 10s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [1450, 400]
+    },
+    {
+      "parameters": {
+        "url": "=https://votre-app.railway.app/api/status/{{ $node[\"Générer Image\"].json.job_id }}",
+        "options": {}
+      },
+      "name": "Vérifier Statut (Retry)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1650, 400]
+    }
+  ],
+  "connections": {
+    "Déclencheur Quotidien": {
+      "main": [
+        [
+          {
+            "node": "Configuration Dou'a",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configuration Dou'a": {
+      "main": [
+        [
+          {
+            "node": "Générer Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Générer Image": {
+      "main": [
+        [
+          {
+            "node": "Attendre 5s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attendre 5s": {
+      "main": [
+        [
+          {
+            "node": "Vérifier Statut",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vérifier Statut": {
+      "main": [
+        [
+          {
+            "node": "Si Terminé",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Si Terminé": {
+      "main": [
+        [
+          {
+            "node": "Télécharger Image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Réessayer dans 10s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Réessayer dans 10s": {
+      "main": [
+        [
+          {
+            "node": "Vérifier Statut (Retry)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vérifier Statut (Retry)": {
+      "main": [
+        [
+          {
+            "node": "Si Terminé",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
